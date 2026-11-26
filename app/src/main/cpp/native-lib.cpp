@@ -83,9 +83,14 @@ Java_dev_melissa_gpubridge_MainActivity_nativeGpuInfo(JNIEnv* env, jobject) {
 }
 
 extern "C" JNIEXPORT jstring JNICALL
-Java_dev_melissa_gpubridge_MainActivity_nativeComputeTest(JNIEnv* env, jobject) {
-    constexpr uint32_t N = 256;
-    constexpr VkDeviceSize bytes = sizeof(float) * N;
+Java_dev_melissa_gpubridge_MainActivity_nativeComputeTest(JNIEnv* env, jobject, jint requestedCount) {
+    constexpr uint32_t MAX_ELEMENTS = 1048576;
+    if (requestedCount < 1 || static_cast<uint32_t>(requestedCount) > MAX_ELEMENTS) {
+        const std::string s = "COMPUTE: PARÂMETRO INVÁLIDO\nInforme entre 1 e 1.048.576 elementos.";
+        return env->NewStringUTF(s.c_str());
+    }
+    const uint32_t N = static_cast<uint32_t>(requestedCount);
+    const VkDeviceSize bytes = sizeof(float) * static_cast<VkDeviceSize>(N);
     std::ostringstream out;
     const auto totalStart = std::chrono::steady_clock::now();
     VkInstance instance = VK_NULL_HANDLE;
@@ -164,6 +169,22 @@ Java_dev_melissa_gpubridge_MainActivity_nativeComputeTest(JNIEnv* env, jobject) 
         if (physical) break;
     }
     if (!physical) return fail("fila COMPUTE não encontrada", VK_ERROR_FEATURE_NOT_PRESENT);
+
+    const uint32_t workgroupCount = (N + 63u) / 64u;
+    if (bytes > props.limits.maxStorageBufferRange) {
+        out << "COMPUTE: LIMITE EXCEDIDO\nBuffer solicitado: " << bytes
+            << " bytes\nLimite Vulkan: " << props.limits.maxStorageBufferRange << " bytes";
+        cleanup();
+        const std::string s = out.str();
+        return env->NewStringUTF(s.c_str());
+    }
+    if (workgroupCount > props.limits.maxComputeWorkGroupCount[0]) {
+        out << "COMPUTE: LIMITE DE DISPATCH EXCEDIDO\nGrupos solicitados: " << workgroupCount
+            << "\nLimite da GPU: " << props.limits.maxComputeWorkGroupCount[0];
+        cleanup();
+        const std::string s = out.str();
+        return env->NewStringUTF(s.c_str());
+    }
 
     float priority = 1.0f;
     VkDeviceQueueCreateInfo qci{};
@@ -354,9 +375,14 @@ Java_dev_melissa_gpubridge_MainActivity_nativeComputeTest(JNIEnv* env, jobject) 
         << "\nFila: COMPUTE"
         << "\nElementos processados: " << N
         << "\nErros de validação: " << errors
-        << "\nAmostra: " << output[0] << ", " << output[1] << ", "
-        << output[2] << ", ... " << output[N - 1]
-        << "\nSubmit + espera da GPU: " << submitWaitMs << " ms"
+        << "\nAmostra: ";
+    const uint32_t sampleCount = N < 3u ? N : 3u;
+    for (uint32_t i = 0; i < sampleCount; ++i) {
+        if (i) out << ", ";
+        out << output[i];
+    }
+    if (N > 3u) out << ", ... " << output[N - 1];
+    out << "\nSubmit + espera da GPU: " << submitWaitMs << " ms"
         << "\nTempo total do teste: " << totalMs << " ms"
         << "\n\nA medição inclui submissão e sincronização, não apenas o tempo puro do shader.";
     cleanup();
