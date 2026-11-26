@@ -127,7 +127,7 @@ cd "$SOURCE"
   --enable-encoder=mpeg4,png \
   --enable-muxer=mp4,image2 \
   --enable-filter=buffer,buffersink,format,hwupload,hwdownload,scale_vulkan,scale,crop,fps,transpose \
-  --extra-cflags="-fPIC" \
+  --extra-cflags="-fPIC -I$VULKAN_HEADERS_DIR/include" \
   --extra-ldflags="-L$LIB_DIR" \
   --pkg-config=pkg-config
 
