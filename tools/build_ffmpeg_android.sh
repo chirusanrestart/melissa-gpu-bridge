@@ -9,6 +9,8 @@ NDK="${ANDROID_NDK_HOME:-${ANDROID_NDK_ROOT:-}}"
 ABI="${ABI:-arm64-v8a}"
 API="${ANDROID_API:-26}"
 VERSION="${FFMPEG_VERSION:-n8.0}"
+VULKAN_HEADERS_TAG="${VULKAN_HEADERS_TAG:-v1.4.317}"
+VULKAN_HEADERS_VERSION="${VULKAN_HEADERS_TAG#v}"
 HOST_TAG="linux-x86_64"
 
 if [[ -z "$NDK" || ! -d "$NDK" ]]; then
@@ -49,21 +51,35 @@ WORK="$ROOT/build/ffmpeg/$ABI"
 SOURCE="$WORK/source"
 BUILD="$WORK/build"
 OUT="$ROOT/ffmpeg-android/$ABI"
-mkdir -p "$WORK" "$BUILD" "$OUT/include" "$OUT/lib" "$WORK/pkgconfig"
+VULKAN_HEADERS_DIR="$ROOT/build/vulkan-headers/$VULKAN_HEADERS_TAG"
+mkdir -p "$WORK" "$BUILD" "$OUT/include" "$OUT/lib" "$WORK/pkgconfig" "$(dirname "$VULKAN_HEADERS_DIR")"
 
 if [[ ! -f "$SOURCE/configure" ]]; then
   rm -rf "$SOURCE"
   git clone --depth 1 --branch "$VERSION" https://github.com/FFmpeg/FFmpeg.git "$SOURCE"
 fi
 
+if [[ ! -f "$VULKAN_HEADERS_DIR/include/vulkan/vulkan_core.h" ]]; then
+  rm -rf "$VULKAN_HEADERS_DIR"
+  git clone --depth 1 --branch "$VULKAN_HEADERS_TAG" \
+    https://github.com/KhronosGroup/Vulkan-Headers.git "$VULKAN_HEADERS_DIR"
+fi
+
+VULKAN_HEADER_VERSION="$(awk '$1 == "#define" && $2 == "VK_HEADER_VERSION" { print $3; exit }' \
+  "$VULKAN_HEADERS_DIR/include/vulkan/vulkan_core.h")"
+if [[ ! "$VULKAN_HEADER_VERSION" =~ ^[0-9]+$ ]] || (( VULKAN_HEADER_VERSION < 277 )); then
+  echo "Vulkan-Headers insuficientes: VK_HEADER_VERSION=$VULKAN_HEADER_VERSION; mínimo exigido: 277." >&2
+  exit 1
+fi
+
 cat > "$WORK/pkgconfig/vulkan.pc" <<EOF
 prefix=$SYSROOT/usr
 libdir=$LIB_DIR
-includedir=$SYSROOT/usr/include
+includedir=$VULKAN_HEADERS_DIR/include
 
 Name: Vulkan
-Description: Android NDK Vulkan loader
-Version: 1.3.275
+Description: Khronos Vulkan-Headers with Android NDK loader
+Version: $VULKAN_HEADERS_VERSION
 Libs: -L\${libdir} -lvulkan
 Cflags: -I\${includedir}
 EOF
@@ -71,6 +87,8 @@ EOF
 export PKG_CONFIG_PATH="$WORK/pkgconfig"
 export PKG_CONFIG_LIBDIR="$WORK/pkgconfig"
 export PKG_CONFIG_SYSROOT_DIR="$SYSROOT"
+echo "Vulkan-Headers $VULKAN_HEADERS_VERSION (VK_HEADER_VERSION=$VULKAN_HEADER_VERSION)"
+echo "Vulkan loader NDK: $LIB_DIR/libvulkan.so"
 
 cd "$SOURCE"
 ./configure \
