@@ -54,6 +54,21 @@ jobs:
             ABI="$ABI" BUILD_JOBS=2 bash tools/build_ffmpeg_android.sh
           done
 
+      - name: Dump FFmpeg configure diagnostics
+        if: failure()
+        shell: bash
+        run: |
+          shopt -s nullglob
+          logs=(build/ffmpeg/*/source/ffbuild/config.log)
+          if (( ${#logs[@]} == 0 )); then
+            echo "Nenhum ffbuild/config.log encontrado."
+            exit 0
+          fi
+          for log in "${logs[@]}"; do
+            echo "===== $log: Vulkan/configure diagnostics ====="
+            grep -n -E -B 12 -A 24 'vulkan|error:|fatal error:' "$log" | tail -n 400 || true
+          done
+
       - name: Set up Gradle
         uses: gradle/actions/setup-gradle@v6
         with:
