@@ -256,7 +256,7 @@ class MainActivity : Activity() {
             setPadding(0, 28, 0, 8)
         }
         val benchmarkDescription = TextView(this).apply {
-            text = "Redimensiona um vídeo usando FFmpeg + scale_vulkan. A decodificação e a codificação são feitas pelo FFmpeg; o redimensionamento é executado no backend Vulkan."
+            text = "Redimensiona um vídeo usando FFmpeg + scale_vulkan. A decodificação e a codificação são feitas pelo FFmpeg; o redimensionamento é executado no backend Vulkan e o áudio é copiado sem recodificação."
             textSize = 13f
             setTextColor(0xFFBDB6C8.toInt())
             setPadding(0, 0, 0, 12)
