@@ -16,7 +16,7 @@ case "$ARCH" in
         BINARY="mgpu-armv7"
         ;;
     *)
-        printf 'Arquitetura não suportada pelo pacote: %s\n' ""$ARCH" >&2
+        printf 'Arquitetura não suportada pelo pacote: %s\n' "$ARCH" >&2
         exit 1
         ;;
 esac
