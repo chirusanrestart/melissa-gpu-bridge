@@ -108,8 +108,8 @@ cd "$SOURCE"
   --enable-demuxer=mov,matroska,avi,flv,mpegts \
   --enable-decoder=h264,hevc,vp8,vp9,mjpeg,png,webp \
   --enable-parser=h264,hevc,vp8,vp9,mjpeg \
-  --enable-encoder=png \
-  --enable-muxer=image2 \
+  --enable-encoder=mpeg4,png \
+  --enable-muxer=mp4,image2 \
   --enable-filter=buffer,buffersink,format,hwupload,hwdownload,scale_vulkan,scale,crop,fps,transpose \
   --extra-cflags="-fPIC" \
   --extra-ldflags="-L$LIB_DIR" \
