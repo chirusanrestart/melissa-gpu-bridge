@@ -1,4 +1,4 @@
-name: Android APK
+name: Android APK and Termux CLI
 
 on:
   push:
@@ -16,32 +16,80 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v7
+
       - name: Set up JDK 17
         uses: actions/setup-java@v6
         with:
           distribution: temurin
           java-version: '17'
+
       - name: Set up Android SDK
         uses: android-actions/setup-android@v4
+
+      - name: Run host CLI tests
+        run: |
+          cmake -S termux -B build/cli-host -DBUILD_TESTING=ON
+          cmake --build build/cli-host --parallel
+          ctest --test-dir build/cli-host --output-on-failure
+
       - name: Install shader compiler
         run: |
           sudo apt-get update
-          sudo apt-get install -y glslang-tools
+          sudo apt-get install -y glslang-tools zip
+
       - name: Compile Vulkan compute shader
         run: |
           glslangValidator -V --target-env vulkan1.0 app/src/main/cpp/vector.comp -o app/src/main/cpp/vector.spv
           python3 tools/embed_spirv.py app/src/main/cpp/vector.spv app/src/main/cpp/vector_spv.h
+
       - name: Install Android build tools
         run: sdkmanager "platforms;android-35" "build-tools;35.0.0" "ndk;27.2.12479018" "cmake;3.22.1"
+
       - name: Set up Gradle
         uses: gradle/actions/setup-gradle@v6
         with:
           gradle-version: '8.9'
+
       - name: Build debug APK
         run: gradle --no-daemon assembleDebug
+
       - name: Upload APK
         uses: actions/upload-artifact@v7.0.2
         with:
           name: melissa-gpu-bridge-compute-debug
           path: app/build/outputs/apk/debug/app-debug.apk
+          if-no-files-found: error
+
+      - name: Build Termux binaries
+        shell: bash
+        run: |
+          set -euo pipefail
+          NDK="$ANDROID_HOME/ndk/27.2.12479018"
+          mkdir -p dist
+          for TARGET in "arm64-v8a:aarch64" "armeabi-v7a:armv7"; do
+            ABI="${TARGET%%:*}"
+            NAME="${TARGET#*:}"
+            BUILD_DIR="build/termux/$ABI"
+
+            cmake -S termux -B "$BUILD_DIR" \
+              -DCMAKE_TOOLCHAIN_FILE="$NDK/build/cmake/android.toolchain.cmake" \
+              -DANDROID_ABI="$ABI" \
+              -DANDROID_PLATFORM=26 \
+              -DANDROID_STL=c++_static \
+              -DBUILD_TESTING=OFF \
+              -DCMAKE_BUILD_TYPE=Release
+
+            cmake --build "$BUILD_DIR" --target mgpu --parallel
+            install -m 755 "$BUILD_DIR/mgpu" "dist/mgpu-$NAME"
+          done
+
+          install -m 755 termux/install.sh dist/install.sh
+          zip -j dist/melissa-gpu-bridge-termux.zip \
+            dist/mgpu-aarch64 dist/mgpu-armv7 dist/install.sh
+
+      - name: Upload Termux package
+        uses: actions/upload-artifact@v7.0.2
+        with:
+          name: melissa-gpu-bridge-termux
+          path: dist/melissa-gpu-bridge-termux.zip
           if-no-files-found: error
