@@ -5,7 +5,7 @@ if(NOT EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/vector_spv.h")
     message(FATAL_ERROR "vector_spv.h ausente. Execute tools/embed_spirv.py antes do Gradle.")
 endif()
 
-add_library(mgpu SHARED native-lib.cpp)
+add_library(mgpu SHARED native-lib.cpp gpu_core.cpp)
 find_library(log-lib log)
 find_library(android-lib android)
 find_library(vulkan-lib vulkan)
