@@ -41,7 +41,7 @@ class MainActivity : Activity() {
         }
         val info = TextView(this).apply {
             text = try { nativeGpuInfo() } catch (error: Throwable) {
-                "Falha ao consultar Vulkan:\n\${error.message ?: error.javaClass.simpleName}"
+                "Falha ao consultar Vulkan: " + (error.message ?: error.javaClass.simpleName)
             }
             textSize = 15f
             setTextColor(0xFFF1EDF5.toInt())
@@ -67,7 +67,7 @@ class MainActivity : Activity() {
                     val result = try {
                         nativeComputeTest()
                     } catch (error: Throwable) {
-                        "Falha no teste nativo:\n\${error.message ?: error.javaClass.simpleName}"
+                        "Falha no teste nativo: " + (error.message ?: error.javaClass.simpleName)
                     }
                     runOnUiThread {
                         computeStatus.text = result
