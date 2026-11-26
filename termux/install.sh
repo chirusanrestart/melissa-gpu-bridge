@@ -7,15 +7,16 @@ if [[ -z "${PREFIX:-}" || ! -d "$PREFIX/bin" ]]; then
 fi
 
 SCRIPT_DIR="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)"
-case "$(uname -m)" in
+ARCH="$(dpkg --print-architecture 2>/dev/null || uname -m)"
+case "$ARCH" in
     aarch64)
         BINARY="mgpu-aarch64"
         ;;
-    armv7l|armv8l|arm)
+    arm|armv7l|armv8l)
         BINARY="mgpu-armv7"
         ;;
     *)
-        printf 'Arquitetura não suportada pelo pacote: %s\n' "$(uname -m)" >&2
+        printf 'Arquitetura não suportada pelo pacote: %s\n' ""$ARCH" >&2
         exit 1
         ;;
 esac
