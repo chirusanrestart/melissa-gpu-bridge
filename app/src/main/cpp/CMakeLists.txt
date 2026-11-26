@@ -1,7 +1,7 @@
 cmake_minimum_required(VERSION 3.22.1)
 project(mgpu LANGUAGES CXX)
 
-if(NOT EXISTS "vector_spv.h")
+if(NOT EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/vector_spv.h")
     message(FATAL_ERROR "vector_spv.h ausente. Execute tools/embed_spirv.py antes do Gradle.")
 endif()
 
