@@ -86,7 +86,6 @@ EOF
 
 export PKG_CONFIG_PATH="$WORK/pkgconfig"
 export PKG_CONFIG_LIBDIR="$WORK/pkgconfig"
-export PKG_CONFIG_SYSROOT_DIR="$SYSROOT"
 echo "Vulkan-Headers $VULKAN_HEADERS_VERSION (VK_HEADER_VERSION=$VULKAN_HEADER_VERSION)"
 echo "Vulkan loader NDK: $LIB_DIR/libvulkan.so"
 
