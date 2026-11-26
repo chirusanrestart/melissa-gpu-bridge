@@ -29,7 +29,7 @@ if [[ ! -f "$SOURCE" ]]; then
 fi
 
 install -m 755 "$SOURCE" "$PREFIX/bin/mgpu"
-printf 'Instalado: %s/bin/mgpu\n' "$PREFIX/bin"
+printf 'Instalado: %s/bin/mgpu\n' "$PREFIX"
 
 if [[ ! -e "$PREFIX/lib/libvulkan.so" ]]; then
     printf '%s\n' "Aviso: loader Vulkan do Termux não encontrado."
