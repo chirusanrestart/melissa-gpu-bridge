@@ -13,6 +13,7 @@ import android.widget.TextView
 class MainActivity : Activity() {
     private external fun nativeGpuInfo(): String
     private external fun nativeComputeTest(elementCount: Int): String
+    private external fun nativeFFmpegVulkanInfo(): String
 
     companion object {
         private const val MAX_ELEMENTS = 1_048_576
@@ -38,7 +39,7 @@ class MainActivity : Activity() {
             typeface = Typeface.DEFAULT_BOLD
         }
         val subtitle = TextView(this).apply {
-            text = "Diagnóstico nativo • Vulkan Compute"
+            text = "Diagnóstico nativo • Vulkan Compute + FFmpeg"
             textSize = 14f
             setTextColor(0xFFBDB6C8.toInt())
             setPadding(0, 6, 0, 24)
@@ -52,6 +53,33 @@ class MainActivity : Activity() {
             typeface = Typeface.MONOSPACE
             setPadding(16, 18, 16, 18)
             setBackgroundColor(0xFF24202D.toInt())
+        }
+        val ffmpegStatus = TextView(this).apply {
+            text = "FFmpeg Vulkan ainda não foi testado."
+            textSize = 14f
+            setTextColor(0xFFF1EDF5.toInt())
+            typeface = Typeface.MONOSPACE
+            setPadding(16, 18, 16, 18)
+            setBackgroundColor(0xFF24202D.toInt())
+        }
+        val ffmpegButton = Button(this).apply {
+            text = "Testar FFmpeg + Vulkan nativo"
+            isAllCaps = false
+            setOnClickListener {
+                isEnabled = false
+                ffmpegStatus.text = "FFmpeg está inicializando o dispositivo Vulkan..."
+                Thread {
+                    val result = try {
+                        nativeFFmpegVulkanInfo()
+                    } catch (error: Throwable) {
+                        "Falha no FFmpeg nativo: " + (error.message ?: error.javaClass.simpleName)
+                    }
+                    runOnUiThread {
+                        ffmpegStatus.text = result
+                        isEnabled = true
+                    }
+                }.start()
+            }
         }
         val countLabel = TextView(this).apply {
             text = "Quantidade de elementos (1 a 1.048.576)"
@@ -134,6 +162,8 @@ class MainActivity : Activity() {
         root.addView(title)
         root.addView(subtitle)
         root.addView(info)
+        root.addView(ffmpegButton)
+        root.addView(ffmpegStatus)
         root.addView(countLabel)
         root.addView(countInput)
         root.addView(presets)
