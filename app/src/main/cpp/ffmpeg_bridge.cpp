@@ -207,16 +207,23 @@ std::string resizeVideo(int inputFd, const std::string& outputPath, int targetHe
     result = avfilter_graph_create_filter(&source, bufferFilter, "video_input", sourceArgs, nullptr, graph);
     if (result < 0) return finish("Falha ao criar entrada do filtro: " + ffError(result), false);
 
-    result = avfilter_graph_create_filter(&upload, uploadFilter, "vulkan_upload", nullptr, nullptr, graph);
-    if (result < 0) return finish("Falha ao criar hwupload: " + ffError(result), false);
+    upload = avfilter_graph_alloc_filter(graph, uploadFilter, "vulkan_upload");
+    if (!upload) return finish("Falha ao alocar hwupload.", false);
     upload->hw_device_ctx = av_buffer_ref(hwDevice);
     if (!upload->hw_device_ctx)
         return finish("Falha ao associar o dispositivo Vulkan ao hwupload.", false);
+    result = avfilter_init_str(upload, nullptr);
+    if (result < 0) return finish("Falha ao inicializar hwupload: " + ffError(result), false);
 
     char scaleArgs[128]{};
     std::snprintf(scaleArgs, sizeof(scaleArgs), "w=%d:h=%d", outputWidth, outputHeight);
-    result = avfilter_graph_create_filter(&scale, scaleFilter, "gpu_resize", scaleArgs, nullptr, graph);
-    if (result < 0) return finish("Falha ao criar scale_vulkan: " + ffError(result), false);
+    scale = avfilter_graph_alloc_filter(graph, scaleFilter, "gpu_resize");
+    if (!scale) return finish("Falha ao alocar scale_vulkan.", false);
+    scale->hw_device_ctx = av_buffer_ref(hwDevice);
+    if (!scale->hw_device_ctx)
+        return finish("Falha ao associar o dispositivo Vulkan ao scale_vulkan.", false);
+    result = avfilter_init_str(scale, scaleArgs);
+    if (result < 0) return finish("Falha ao inicializar scale_vulkan: " + ffError(result), false);
 
     result = avfilter_graph_create_filter(&download, downloadFilter, "vulkan_download", nullptr, nullptr, graph);
     if (result < 0) return finish("Falha ao criar hwdownload: " + ffError(result), false);
