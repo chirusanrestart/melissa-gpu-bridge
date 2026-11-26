@@ -21,6 +21,7 @@ android {
         externalNativeBuild {
             cmake {
                 cppFlags += listOf("-std=c++17", "-Wall", "-Wextra")
+                arguments += listOf("-DFFMPEG_ROOT=${rootProject.projectDir}/ffmpeg-android")
             }
         }
     }
