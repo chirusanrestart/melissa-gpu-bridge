@@ -1,5 +1,6 @@
 #include <jni.h>
 
+#include <algorithm>
 #include <atomic>
 #include <chrono>
 #include <cstdio>
@@ -163,6 +164,10 @@ std::string resizeVideo(int inputFd, const std::string& outputPath, int targetHe
     if (durationUs > 0)
         totalFrames = static_cast<std::int64_t>((durationUs / static_cast<double>(AV_TIME_BASE)) * sourceFps);
     gTotalFrames.store(totalFrames);
+
+    if (decoder->pix_fmt == AV_PIX_FMT_NONE) {
+        return finish("O decoder não informou o formato dos frames após a leitura dos metadados.", false);
+    }
 
     const int outputHeight = targetHeight & ~1;
     int outputWidth = static_cast<int>(
