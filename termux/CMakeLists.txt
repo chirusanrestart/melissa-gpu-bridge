@@ -9,6 +9,7 @@ target_compile_features(mgpu_cli_args PUBLIC cxx_std_17)
 target_compile_options(mgpu_cli_args PRIVATE -Wall -Wextra -Werror)
 
 if(BUILD_TESTING)
+    find_package(Python3 COMPONENTS Interpreter REQUIRED)
     add_executable(mgpu_cli_args_test "${CMAKE_CURRENT_SOURCE_DIR}/../tests/cli_args_test.cpp")
     target_link_libraries(mgpu_cli_args_test PRIVATE mgpu_cli_args)
     target_compile_features(mgpu_cli_args_test PRIVATE cxx_std_17)
@@ -42,6 +43,7 @@ if(BUILD_TESTING)
 
     add_test(NAME mgpu_invalid_count COMMAND mgpu_cli_smoke test 0)
     set_tests_properties(mgpu_invalid_count PROPERTIES WILL_FAIL TRUE)
+    add_test(NAME mgpu_json_validity COMMAND ${Python3_EXECUTABLE} "${CMAKE_CURRENT_SOURCE_DIR}/../tests/cli_json_test.py" $<TARGET_FILE:mgpu_cli_smoke>)
 endif()
 
 if(ANDROID)
