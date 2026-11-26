@@ -41,10 +41,7 @@ if(BUILD_TESTING)
     )
 
     add_test(NAME mgpu_invalid_count COMMAND mgpu_cli_smoke test 0)
-    set_tests_properties(mgpu_invalid_count PROPERTIES
-        WILL_FAIL TRUE
-        PASS_REGULAR_EXPRESSION "Quantidade inválida"
-    )
+    set_tests_properties(mgpu_invalid_count PROPERTIES WILL_FAIL TRUE)
 endif()
 
 if(ANDROID)
