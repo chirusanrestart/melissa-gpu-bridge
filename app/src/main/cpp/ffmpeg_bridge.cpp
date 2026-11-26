@@ -7,6 +7,7 @@
 #include <cstdint>
 #include <sstream>
 #include <string>
+#include <vector>
 
 extern "C" {
 #include <libavcodec/avcodec.h>
@@ -73,6 +74,7 @@ std::string resizeVideo(int inputFd, const std::string& outputPath, int targetHe
     int videoIndex = -1;
     int result = 0;
     bool headerWritten = false;
+    std::vector<int> outputStreamMap;
     std::int64_t processed = 0;
     double sourceFps = 30.0;
     std::int64_t totalFrames = 0;
@@ -268,6 +270,22 @@ std::string resizeVideo(int inputFd, const std::string& outputPath, int targetHe
     if (result < 0)
         return finish("Falha ao configurar faixa MP4: " + ffError(result), false);
 
+    outputStreamMap.assign(input->nb_streams, -1);
+    outputStreamMap[videoIndex] = outputStream->index;
+    for (unsigned int i = 0; i < input->nb_streams; ++i) {
+        AVStream* inputTrack = input->streams[i];
+        if (inputTrack->codecpar->codec_type != AVMEDIA_TYPE_AUDIO) continue;
+        AVStream* audioTrack = avformat_new_stream(output, nullptr);
+        if (!audioTrack)
+            return finish("Falha ao criar faixa de áudio de saída.", false);
+        result = avcodec_parameters_copy(audioTrack->codecpar, inputTrack->codecpar);
+        if (result < 0)
+            return finish("Falha ao copiar parâmetros de áudio: " + ffError(result), false);
+        audioTrack->codecpar->codec_tag = 0;
+        audioTrack->time_base = inputTrack->time_base;
+        outputStreamMap[i] = audioTrack->index;
+    }
+
     if (!(output->oformat->flags & AVFMT_NOFILE)) {
         result = avio_open(&output->pb, outputPath.c_str(), AVIO_FLAG_WRITE);
         if (result < 0)
@@ -345,6 +363,18 @@ std::string resizeVideo(int inputFd, const std::string& outputPath, int targetHe
             }
             if (result != AVERROR(EAGAIN) && result != AVERROR_EOF)
                 return finish("Falha ao decodificar frame: " + ffError(result), false);
+        } else if (packet->stream_index >= 0 &&
+                   static_cast<std::size_t>(packet->stream_index) < outputStreamMap.size() &&
+                   outputStreamMap[packet->stream_index] >= 0) {
+            AVStream* inputTrack = input->streams[packet->stream_index];
+            AVStream* outputTrack = output->streams[outputStreamMap[packet->stream_index]];
+            av_packet_rescale_ts(packet, inputTrack->time_base, outputTrack->time_base);
+            packet->stream_index = outputTrack->index;
+            packet->pos = -1;
+            result = av_interleaved_write_frame(output, packet);
+            av_packet_unref(packet);
+            if (result < 0)
+                return finish("Falha ao copiar áudio para o MP4: " + ffError(result), false);
         } else {
             av_packet_unref(packet);
         }
