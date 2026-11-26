@@ -44,6 +44,7 @@ if(BUILD_TESTING)
     add_test(NAME mgpu_invalid_count COMMAND mgpu_cli_smoke test 0)
     set_tests_properties(mgpu_invalid_count PROPERTIES WILL_FAIL TRUE)
     add_test(NAME mgpu_json_validity COMMAND ${Python3_EXECUTABLE} "${CMAKE_CURRENT_SOURCE_DIR}/../tests/cli_json_test.py" $<TARGET_FILE:mgpu_cli_smoke>)
+    add_test(NAME mgpu_installer COMMAND ${Python3_EXECUTABLE} "${CMAKE_CURRENT_SOURCE_DIR}/../tests/termux_install_test.py")
 endif()
 
 if(ANDROID)
