@@ -24,13 +24,15 @@ def run_install(architecture: str):
         dpkg.write_text('#!/bin/sh\nprintf "%s\\n" "$FAKE_ARCH"\n', encoding="utf-8")
         dpkg.chmod(0o755)
 
+        packaged_installer = package / "install.sh"
+        packaged_installer.write_text(installer.read_text(encoding="utf-8"), encoding="utf-8")
         environment = os.environ.copy()
         environment["PREFIX"] = str(prefix)
         environment["FAKE_ARCH"] = architecture
         environment["PATH"] = str(fake_bin) + os.pathsep + environment.get("PATH", "")
 
         result = subprocess.run(
-            ["bash", str(installer)],
+            ["bash", str(packaged_installer)],
             cwd=package,
             env=environment,
             capture_output=True,
