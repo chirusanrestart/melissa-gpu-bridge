@@ -2,7 +2,7 @@ name: Android APK and Termux CLI
 
 on:
   push:
-    branches: [ main ]
+    branches: [ main, feature/ffmpeg-vulkan-native ]
   pull_request:
     branches: [ main ]
   workflow_dispatch:
