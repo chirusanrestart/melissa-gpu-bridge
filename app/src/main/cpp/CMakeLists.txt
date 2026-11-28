@@ -44,19 +44,16 @@ add_library(mgpu SHARED
 find_library(log-lib log)
 find_library(android-lib android)
 find_library(vulkan-lib vulkan)
-find_library(atomic-lib atomic)
 
 if(NOT vulkan-lib)
     message(FATAL_ERROR "Vulkan loader library was not found in the Android NDK sysroot")
-endif()
-if(NOT atomic-lib)
-    message(FATAL_ERROR "Android atomic runtime library was not found")
 endif()
 
 target_include_directories(mgpu PRIVATE
     "${FFMPEG_ABI_DIR}/include"
     "${SHADERC_ABI_DIR}/include"
 )
+
 target_link_libraries(mgpu PRIVATE
     ffmpeg_avfilter
     ffmpeg_avformat
@@ -65,10 +62,18 @@ target_link_libraries(mgpu PRIVATE
     ffmpeg_swresample
     ffmpeg_avutil
     ffmpeg_shaderc
-    ${atomic-lib}
     ${vulkan-lib}
     ${log-lib}
     ${android-lib}
 )
+
+# FFmpeg and static C++ dependencies may require libc++ atomic symbols on
+# some ARM API levels. NDK 22+ commonly provides them through libc++ itself,
+# so resolve libatomic only when it is actually present.
+find_library(ATOMIC_LIBRARY atomic)
+if(ATOMIC_LIBRARY)
+    target_link_libraries(mgpu PRIVATE ${ATOMIC_LIBRARY})
+endif()
+
 target_compile_features(mgpu PRIVATE cxx_std_17)
 target_compile_options(mgpu PRIVATE -Wall -Wextra -Werror=return-type)
