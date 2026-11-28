@@ -4,7 +4,7 @@ on:
   push:
     branches: [ main ]
   pull_request:
-    branches: [ main ]
+    branches: [ main, feature/ffmpeg-vulkan-native ]
   workflow_dispatch:
 
 permissions:
@@ -31,6 +31,8 @@ jobs:
           cmake -S termux -B build/cli-host -DBUILD_TESTING=ON
           cmake --build build/cli-host --parallel
           ctest --test-dir build/cli-host --output-on-failure
+          bash tests/ffmpeg_android_paths_test.sh
+          bash tests/ffmpeg_config_validation_test.sh
 
       - name: Install native build tools
         run: |
@@ -43,15 +45,31 @@ jobs:
           python3 tools/embed_spirv.py app/src/main/cpp/vector.spv app/src/main/cpp/vector_spv.h
 
       - name: Install Android build tools
-        run: sdkmanager "platforms;android-35" "build-tools;35.0.0" "ndk;27.2.12479018" "cmake;3.22.1"
+        run: sdkmanager "platforms;android-35" "build-tools;35.0.0" "ndk;28.0.13004108" "cmake;3.22.1"
 
-      - name: Build FFmpeg with Vulkan for Android
+      - name: Build Shaderc and FFmpeg with Vulkan for Android
         shell: bash
         run: |
           set -euo pipefail
-          export ANDROID_NDK_HOME="$ANDROID_HOME/ndk/27.2.12479018"
+          export ANDROID_NDK_HOME="$ANDROID_HOME/ndk/28.0.13004108"
           for ABI in arm64-v8a armeabi-v7a; do
+            ABI="$ABI" BUILD_JOBS=2 bash tools/build_shaderc_android.sh
             ABI="$ABI" BUILD_JOBS=2 bash tools/build_ffmpeg_android.sh
+          done
+
+      - name: Dump FFmpeg configure diagnostics
+        if: failure()
+        shell: bash
+        run: |
+          shopt -s nullglob
+          logs=(build/ffmpeg/*/source/ffbuild/config.log)
+          if (( ${#logs[@]} == 0 )); then
+            echo "Nenhum ffbuild/config.log encontrado."
+            exit 0
+          fi
+          for log in "${logs[@]}"; do
+            echo "===== $log: Vulkan/Shaderc configure diagnostics ====="
+            grep -n -E -B 12 -A 24 'vulkan|shaderc|spirv|error:|fatal error:' "$log" | tail -n 500 || true
           done
 
       - name: Set up Gradle
@@ -73,7 +91,7 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          NDK="$ANDROID_HOME/ndk/27.2.12479018"
+          NDK="$ANDROID_HOME/ndk/28.0.13004108"
           mkdir -p dist
           for TARGET in "arm64-v8a:aarch64" "armeabi-v7a:armv7"; do
             ABI="${TARGET%%:*}"
