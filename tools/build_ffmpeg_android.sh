@@ -64,8 +64,8 @@ includedir=$SYSROOT/usr/include
 Name: Vulkan
 Description: Android NDK Vulkan loader
 Version: 1.3.275
-Libs: -L${libdir} -lvulkan
-Cflags: -I${includedir}
+Libs: -L${LIB_DIR} -lvulkan
+Cflags: -I${SYSROOT}/usr/include
 EOF
 
 export PKG_CONFIG_PATH="$WORK/pkgconfig"
