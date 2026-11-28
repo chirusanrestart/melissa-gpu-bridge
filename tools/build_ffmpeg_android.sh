@@ -5,6 +5,7 @@ set -euo pipefail
 # Required: ANDROID_NDK_HOME, ABI (arm64-v8a or armeabi-v7a), glslangValidator,
 # make, git, pkg-config.
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+source "$ROOT/tools/android_ndk_paths.sh"
 NDK="${ANDROID_NDK_HOME:-${ANDROID_NDK_ROOT:-}}"
 ABI="${ABI:-arm64-v8a}"
 API="${ANDROID_API:-26}"
@@ -39,7 +40,7 @@ TOOLCHAIN="$NDK/toolchains/llvm/prebuilt/$HOST_TAG"
 SYSROOT="$TOOLCHAIN/sysroot"
 CC="$TOOLCHAIN/bin/${TRIPLE}${API}-clang"
 CXX="$TOOLCHAIN/bin/${TRIPLE}${API}-clang++"
-LIB_DIR="$SYSROOT/usr/lib/$TRIPLE/$API"
+LIB_DIR="$(android_ndk_vulkan_lib_dir "$SYSROOT" "$ABI" "$API")"
 
 for tool in "$CC" "$CXX" "$TOOLCHAIN/bin/llvm-ar" "$LIB_DIR/libvulkan.so"; do
   [[ -e "$tool" ]] || { echo "Ferramenta/arquivo ausente: $tool" >&2; exit 1; }

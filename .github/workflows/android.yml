@@ -31,6 +31,7 @@ jobs:
           cmake -S termux -B build/cli-host -DBUILD_TESTING=ON
           cmake --build build/cli-host --parallel
           ctest --test-dir build/cli-host --output-on-failure
+          bash tests/ffmpeg_android_paths_test.sh
 
       - name: Install native build tools
         run: |
