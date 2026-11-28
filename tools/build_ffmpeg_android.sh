@@ -116,7 +116,8 @@ includedir=\${prefix}/include
 Name: shaderc
 Description: Android NDK Shaderc static library
 Version: $SHADERC_VERSION
-Libs: -L\${libdir} -lshaderc -lc++_static -latomic -lm
+# Use the NDK API-specific libc++.a linker script so libc++abi is included.
+Libs: -L\${libdir} -lshaderc -lc++ -latomic -lm
 Cflags: -I\${includedir}
 EOF
 
