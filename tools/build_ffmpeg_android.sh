@@ -60,6 +60,20 @@ if [[ ! -f "$SOURCE/configure" ]]; then
   git clone --depth 1 --branch "$VERSION" https://github.com/FFmpeg/FFmpeg.git "$SOURCE"
 fi
 
+# FFmpeg n8.0 omits VKAPI_ATTR on this callback. On Android ARMv7,
+# VKAPI_ATTR expands to the Vulkan-required aapcs-vfp calling convention.
+CALLBACK_SOURCE="$SOURCE/libavutil/hwcontext_vulkan.c"
+CALLBACK_PATCH="$ROOT/patches/ffmpeg-vulkan-armv7-callback.patch"
+if grep -Fq 'static VkBool32 VKAPI_CALL vk_dbg_callback' "$CALLBACK_SOURCE"; then
+  git -C "$SOURCE" apply "$CALLBACK_PATCH"
+elif grep -Fq 'static VKAPI_ATTR' "$CALLBACK_SOURCE" &&
+     grep -Fq 'VkBool32 VKAPI_CALL vk_dbg_callback' "$CALLBACK_SOURCE"; then
+  echo "Callback Vulkan já contém VKAPI_ATTR."
+else
+  echo "Não foi possível reconhecer a assinatura vk_dbg_callback em $CALLBACK_SOURCE." >&2
+  exit 1
+fi
+
 if [[ ! -f "$VULKAN_HEADERS_DIR/include/vulkan/vulkan_core.h" ]]; then
   rm -rf "$VULKAN_HEADERS_DIR"
   git clone --depth 1 --branch "$VULKAN_HEADERS_TAG" \
