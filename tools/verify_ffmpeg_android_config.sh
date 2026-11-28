@@ -17,4 +17,4 @@ if ! grep -q '^CONFIG_LIBSHADERC=yes$' "$CONFIG_MAK"; then
   exit 1
 fi
 
-printf 'Verificado: libshaderc e scale_vulkan habilitados para %s.\\n' "$ABI"
+printf 'Verificado: libshaderc e scale_vulkan habilitados para %s.\n' "$ABI"
