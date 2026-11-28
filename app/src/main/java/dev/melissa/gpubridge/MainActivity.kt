@@ -2,9 +2,11 @@ package dev.melissa.gpubridge
 
 import android.app.Activity
 import android.content.Intent
+import android.content.pm.PackageManager
 import android.database.Cursor
 import android.net.Uri
 import android.os.Bundle
+import android.os.Build
 import android.os.Environment
 import android.os.Handler
 import android.os.Looper
@@ -35,6 +37,7 @@ class MainActivity : Activity() {
     companion object {
         private const val MAX_ELEMENTS = 1_048_576
         private const val PICK_VIDEO_REQUEST = 4102
+        private const val VIDEO_PERMISSION_REQUEST = 4103
         init { System.loadLibrary("mgpu") }
     }
 
@@ -94,6 +97,40 @@ class MainActivity : Activity() {
             videoStatus.text = "Vídeo selecionado:\n" + selectedVideoName
             videoStartButton.isEnabled = true
         }
+    }
+
+    @Deprecated("Deprecated in Android API Activity, retained for minSdk compatibility")
+    override fun onRequestPermissionsResult(
+        requestCode: Int,
+        permissions: Array<out String>,
+        grantResults: IntArray
+    ) {
+        super.onRequestPermissionsResult(requestCode, permissions, grantResults)
+        if (requestCode == VIDEO_PERMISSION_REQUEST) {
+            openVideoPicker()
+        }
+    }
+
+    private fun requestVideoPermission() {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M &&
+            checkSelfPermission("android.permission.READ_EXTERNAL_STORAGE") != PackageManager.PERMISSION_GRANTED
+        ) {
+            requestPermissions(
+                arrayOf("android.permission.READ_EXTERNAL_STORAGE"),
+                VIDEO_PERMISSION_REQUEST
+            )
+        } else {
+            openVideoPicker()
+        }
+    }
+
+    private fun openVideoPicker() {
+        val intent = Intent(Intent.ACTION_OPEN_DOCUMENT).apply {
+            addCategory(Intent.CATEGORY_OPENABLE)
+            type = "video/*"
+            addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
+        }
+        startActivityForResult(intent, PICK_VIDEO_REQUEST)
     }
 
     private fun queryDisplayName(uri: Uri): String? {
@@ -265,12 +302,7 @@ class MainActivity : Activity() {
             text = "Selecionar vídeo da galeria"
             isAllCaps = false
             setOnClickListener {
-                val intent = Intent(Intent.ACTION_OPEN_DOCUMENT).apply {
-                    addCategory(Intent.CATEGORY_OPENABLE)
-                    type = "video/*"
-                    addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
-                }
-                startActivityForResult(intent, PICK_VIDEO_REQUEST)
+                requestVideoPermission()
             }
         }
         videoStatus = TextView(this).apply {
