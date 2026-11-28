@@ -46,12 +46,13 @@ jobs:
       - name: Install Android build tools
         run: sdkmanager "platforms;android-35" "build-tools;35.0.0" "ndk;28.0.13004108" "cmake;3.22.1"
 
-      - name: Build FFmpeg with Vulkan for Android
+      - name: Build Shaderc and FFmpeg with Vulkan for Android
         shell: bash
         run: |
           set -euo pipefail
           export ANDROID_NDK_HOME="$ANDROID_HOME/ndk/28.0.13004108"
           for ABI in arm64-v8a armeabi-v7a; do
+            ABI="$ABI" BUILD_JOBS=2 bash tools/build_shaderc_android.sh
             ABI="$ABI" BUILD_JOBS=2 bash tools/build_ffmpeg_android.sh
           done
 
@@ -66,8 +67,8 @@ jobs:
             exit 0
           fi
           for log in "${logs[@]}"; do
-            echo "===== $log: Vulkan/configure diagnostics ====="
-            grep -n -E -B 12 -A 24 'vulkan|error:|fatal error:' "$log" | tail -n 400 || true
+            echo "===== $log: Vulkan/Shaderc configure diagnostics ====="
+            grep -n -E -B 12 -A 24 'vulkan|shaderc|spirv|error:|fatal error:' "$log" | tail -n 500 || true
           done
 
       - name: Set up Gradle

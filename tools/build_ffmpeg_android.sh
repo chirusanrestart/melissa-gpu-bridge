@@ -41,12 +41,21 @@ SYSROOT="$TOOLCHAIN/sysroot"
 CC="$TOOLCHAIN/bin/${TRIPLE}${API}-clang"
 CXX="$TOOLCHAIN/bin/${TRIPLE}${API}-clang++"
 LIB_DIR="$(android_ndk_vulkan_lib_dir "$SYSROOT" "$ABI" "$API")"
+SHADERC_DIR="$ROOT/shaderc-android/$ABI"
 
 for tool in "$CC" "$CXX" "$TOOLCHAIN/bin/llvm-ar" "$LIB_DIR/libvulkan.so"; do
   [[ -e "$tool" ]] || { echo "Ferramenta/arquivo ausente: $tool" >&2; exit 1; }
 done
 command -v glslangValidator >/dev/null
 command -v pkg-config >/dev/null
+
+if [[ ! -s "$SHADERC_DIR/lib/libshaderc.a" ||
+      ! -s "$SHADERC_DIR/include/shaderc/shaderc.h" ||
+      ! -s "$SHADERC_DIR/VERSION" ]]; then
+  echo "Shaderc Android ausente para $ABI. Execute tools/build_shaderc_android.sh primeiro." >&2
+  exit 1
+fi
+SHADERC_VERSION="$(cat "$SHADERC_DIR/VERSION")"
 
 WORK="$ROOT/build/ffmpeg/$ABI"
 SOURCE="$WORK/source"
@@ -99,9 +108,24 @@ Libs: -L\${libdir} -lvulkan
 Cflags: -I\${includedir}
 EOF
 
+cat > "$WORK/pkgconfig/shaderc.pc" <<EOF
+prefix=$SHADERC_DIR
+libdir=\${prefix}/lib
+includedir=\${prefix}/include
+
+Name: shaderc
+Description: Android NDK Shaderc static library
+Version: $SHADERC_VERSION
+Libs: -L\${libdir} -lshaderc -lc++_static -latomic -lm
+Cflags: -I\${includedir}
+EOF
+
 export PKG_CONFIG_PATH="$WORK/pkgconfig"
 export PKG_CONFIG_LIBDIR="$WORK/pkgconfig"
+pkg-config --atleast-version=2019.1 shaderc
 echo "Vulkan-Headers $VULKAN_HEADERS_VERSION (VK_HEADER_VERSION=$VULKAN_HEADER_VERSION)"
+echo "Shaderc $SHADERC_VERSION para $ABI"
+echo "Shaderc flags: $(pkg-config --cflags --libs shaderc)"
 echo "Vulkan loader NDK: $LIB_DIR/libvulkan.so"
 
 cd "$SOURCE"
@@ -135,6 +159,7 @@ cd "$SOURCE"
   --enable-swscale \
   --enable-swresample \
   --enable-vulkan \
+  --enable-libshaderc \
   --enable-protocol=file \
   --enable-demuxer=mov,matroska,avi,flv,mpegts \
   --enable-decoder=h264,hevc,vp8,vp9,mjpeg,png,webp \
@@ -142,9 +167,20 @@ cd "$SOURCE"
   --enable-encoder=mpeg4,png \
   --enable-muxer=mp4,image2 \
   --enable-filter=buffer,buffersink,format,hwupload,hwdownload,scale_vulkan,scale,crop,fps,transpose \
-  --extra-cflags="-fPIC -I$VULKAN_HEADERS_DIR/include" \
+  --extra-cflags="-fPIC -I$VULKAN_HEADERS_DIR/include -I$SHADERC_DIR/include" \
   --extra-ldflags="-L$LIB_DIR" \
   --pkg-config=pkg-config
+
+if ! grep -q '^#define CONFIG_SCALE_VULKAN_FILTER 1$' config.h; then
+  echo "FFmpeg não habilitou CONFIG_SCALE_VULKAN_FILTER para $ABI." >&2
+  grep -E 'CONFIG_(LIBSHADERC|SCALE_VULKAN_FILTER)' config.h || true
+  exit 1
+fi
+if ! grep -q '^CONFIG_LIBSHADERC=yes$' ffbuild/config.mak; then
+  echo "FFmpeg não confirmou CONFIG_LIBSHADERC para $ABI." >&2
+  exit 1
+fi
+echo "Verificado: libshaderc e scale_vulkan habilitados para $ABI."
 
 make -j"${BUILD_JOBS:-2}"
 make install DESTDIR="$WORK/stage" prefix=/usr
@@ -160,6 +196,6 @@ for library in avutil avcodec avformat avfilter swscale swresample; do
   }
 done
 
-echo "FFmpeg $VERSION compilado para $ABI com Vulkan."
+echo "FFmpeg $VERSION compilado para $ABI com Vulkan + Shaderc."
 echo "Headers: $OUT/include"
 echo "Bibliotecas: $OUT/lib"
