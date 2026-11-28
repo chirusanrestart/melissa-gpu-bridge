@@ -95,7 +95,6 @@ cd "$SOURCE"
   --disable-autodetect \
   --disable-asm \
   --disable-avdevice \
-  --disable-postproc \
   --disable-everything \
   --enable-avcodec \
   --enable-avformat \
