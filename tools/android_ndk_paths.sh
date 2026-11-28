@@ -8,10 +8,10 @@ android_ndk_vulkan_lib_dir() {
         arm64-v8a) sysroot_triple='aarch64-linux-android' ;;
         armeabi-v7a) sysroot_triple='arm-linux-androideabi' ;;
         *)
-            printf 'ABI Android não suportada: %s\\n' "$abi" >&2
+            printf 'ABI Android não suportada: %s\n' "$abi" >&2
             return 1
             ;;
     esac
 
-    printf '%s/usr/lib/%s/%s\\n' "${sysroot%/}" "$sysroot_triple" "$api"
+    printf '%s/usr/lib/%s/%s\n' "${sysroot%/}" "$sysroot_triple" "$api"
 }

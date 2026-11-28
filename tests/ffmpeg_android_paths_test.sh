@@ -19,11 +19,11 @@ assert_vulkan_library_path() {
 
     actual="$(android_ndk_vulkan_lib_dir "$SYSROOT" "$abi" 26)"
     [[ "$actual" == "$expected" ]] || {
-        printf 'FAIL: %s path: expected %s, got %s\\n' "$abi" "$expected" "$actual" >&2
+        printf 'FAIL: %s path: expected %s, got %s\n' "$abi" "$expected" "$actual" >&2
         return 1
     }
     [[ -f "$actual/libvulkan.so" ]] || {
-        printf 'FAIL: %s Vulkan loader not found at %s\\n' "$abi" "$actual" >&2
+        printf 'FAIL: %s Vulkan loader not found at %s\n' "$abi" "$actual" >&2
         return 1
     }
 }
