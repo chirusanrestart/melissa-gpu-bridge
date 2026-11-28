@@ -1,6 +1,8 @@
 package dev.melissa.gpubridge
 
+import android.Manifest
 import android.app.Activity
+import android.content.pm.PackageManager
 import android.os.Bundle
 import android.graphics.Typeface
 import android.text.InputType
@@ -13,9 +15,12 @@ import android.widget.TextView
 class MainActivity : Activity() {
     private external fun nativeGpuInfo(): String
     private external fun nativeComputeTest(elementCount: Int): String
+    private external fun nativeFFmpegVulkanInfo(): String
+    private lateinit var videoPermissionStatus: TextView
 
     companion object {
         private const val MAX_ELEMENTS = 1_048_576
+        private const val REQUEST_VIDEO_PERMISSION = 1001
 
         init { System.loadLibrary("mgpu") }
     }
@@ -23,6 +28,44 @@ class MainActivity : Activity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         render()
+        checkVideoPermission()
+    }
+
+    private fun checkVideoPermission() {
+        if (checkSelfPermission(Manifest.permission.READ_EXTERNAL_STORAGE) ==
+            PackageManager.PERMISSION_GRANTED
+        ) {
+            updateVideoPermissionStatus(true)
+        } else {
+            updateVideoPermissionStatus(false)
+            requestPermissions(
+                arrayOf(Manifest.permission.READ_EXTERNAL_STORAGE),
+                REQUEST_VIDEO_PERMISSION
+            )
+        }
+    }
+
+    private fun updateVideoPermissionStatus(granted: Boolean) {
+        videoPermissionStatus.text = if (granted) {
+            "Acesso aos vídeos: permitido"
+        } else {
+            "Acesso aos vídeos: não permitido. Toque aqui para solicitar novamente."
+        }
+    }
+
+    @Deprecated("Deprecated in Android API, retained for compatibility with the app's minSdk")
+    override fun onRequestPermissionsResult(
+        requestCode: Int,
+        permissions: Array<out String>,
+        grantResults: IntArray
+    ) {
+        super.onRequestPermissionsResult(requestCode, permissions, grantResults)
+        if (requestCode == REQUEST_VIDEO_PERMISSION) {
+            updateVideoPermissionStatus(
+                grantResults.isNotEmpty() &&
+                    grantResults[0] == PackageManager.PERMISSION_GRANTED
+            )
+        }
     }
 
     private fun render() {
@@ -38,10 +81,26 @@ class MainActivity : Activity() {
             typeface = Typeface.DEFAULT_BOLD
         }
         val subtitle = TextView(this).apply {
-            text = "Diagnóstico nativo • Vulkan Compute"
+            text = "Diagnóstico nativo • Vulkan Compute + FFmpeg"
             textSize = 14f
             setTextColor(0xFFBDB6C8.toInt())
             setPadding(0, 6, 0, 24)
+        }
+        videoPermissionStatus = TextView(this).apply {
+            textSize = 14f
+            setTextColor(0xFFFFB6DC.toInt())
+            setPadding(16, 14, 16, 14)
+            setBackgroundColor(0xFF24202D.toInt())
+            setOnClickListener {
+                if (checkSelfPermission(Manifest.permission.READ_EXTERNAL_STORAGE) !=
+                    PackageManager.PERMISSION_GRANTED
+                ) {
+                    requestPermissions(
+                        arrayOf(Manifest.permission.READ_EXTERNAL_STORAGE),
+                        REQUEST_VIDEO_PERMISSION
+                    )
+                }
+            }
         }
         val info = TextView(this).apply {
             text = try { nativeGpuInfo() } catch (error: Throwable) {
@@ -52,6 +111,33 @@ class MainActivity : Activity() {
             typeface = Typeface.MONOSPACE
             setPadding(16, 18, 16, 18)
             setBackgroundColor(0xFF24202D.toInt())
+        }
+        val ffmpegStatus = TextView(this).apply {
+            text = "FFmpeg Vulkan ainda não foi testado."
+            textSize = 14f
+            setTextColor(0xFFF1EDF5.toInt())
+            typeface = Typeface.MONOSPACE
+            setPadding(16, 18, 16, 18)
+            setBackgroundColor(0xFF24202D.toInt())
+        }
+        val ffmpegButton = Button(this).apply {
+            text = "Testar FFmpeg + Vulkan nativo"
+            isAllCaps = false
+            setOnClickListener {
+                isEnabled = false
+                ffmpegStatus.text = "FFmpeg está inicializando o dispositivo Vulkan..."
+                Thread {
+                    val result = try {
+                        nativeFFmpegVulkanInfo()
+                    } catch (error: Throwable) {
+                        "Falha no FFmpeg nativo: " + (error.message ?: error.javaClass.simpleName)
+                    }
+                    runOnUiThread {
+                        ffmpegStatus.text = result
+                        isEnabled = true
+                    }
+                }.start()
+            }
         }
         val countLabel = TextView(this).apply {
             text = "Quantidade de elementos (1 a 1.048.576)"
@@ -133,7 +219,10 @@ class MainActivity : Activity() {
 
         root.addView(title)
         root.addView(subtitle)
+        root.addView(videoPermissionStatus)
         root.addView(info)
+        root.addView(ffmpegButton)
+        root.addView(ffmpegStatus)
         root.addView(countLabel)
         root.addView(countInput)
         root.addView(presets)
