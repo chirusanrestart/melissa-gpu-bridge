@@ -56,16 +56,20 @@ if [[ ! -f "$SOURCE/configure" ]]; then
   git clone --depth 1 --branch "$VERSION" https://github.com/FFmpeg/FFmpeg.git "$SOURCE"
 fi
 
+# FFmpeg discovers Vulkan with pkg-config. Keep paths rooted at / here and let
+# PKG_CONFIG_SYSROOT_DIR map them into the Android NDK sysroot. Embedding the
+# host's absolute sysroot paths in this file causes pkg-config to prefix the
+# sysroot a second time, so configure incorrectly reports Vulkan as missing.
 cat > "$WORK/pkgconfig/vulkan.pc" <<EOF
-prefix=$SYSROOT/usr
-libdir=$LIB_DIR
-includedir=$SYSROOT/usr/include
+prefix=/usr
+libdir=\${prefix}/lib/$TRIPLE/$API
+includedir=\${prefix}/include
 
-Name: Vulkan
+Name: vulkan
 Description: Android NDK Vulkan loader
 Version: 1.3.275
-Libs: -L${LIB_DIR} -lvulkan
-Cflags: -I${SYSROOT}/usr/include
+Libs: -L\${libdir} -lvulkan
+Cflags: -I\${includedir}
 EOF
 
 export PKG_CONFIG_PATH="$WORK/pkgconfig"
