@@ -172,16 +172,10 @@ cd "$SOURCE"
   --extra-ldflags="-L$LIB_DIR" \
   --pkg-config=pkg-config
 
-if ! grep -q '^#define CONFIG_SCALE_VULKAN_FILTER 1$' config.h; then
-  echo "FFmpeg não habilitou CONFIG_SCALE_VULKAN_FILTER para $ABI." >&2
-  grep -E 'CONFIG_(LIBSHADERC|SCALE_VULKAN_FILTER)' config.h || true
-  exit 1
-fi
-if ! grep -q '^CONFIG_LIBSHADERC=yes$' ffbuild/config.mak; then
-  echo "FFmpeg não confirmou CONFIG_LIBSHADERC para $ABI." >&2
-  exit 1
-fi
-echo "Verificado: libshaderc e scale_vulkan habilitados para $ABI."
+"$ROOT/tools/verify_ffmpeg_android_config.sh" \
+  "$SOURCE/config_components.h" \
+  "$SOURCE/ffbuild/config.mak" \
+  "$ABI"
 
 make -j"${BUILD_JOBS:-2}"
 make install DESTDIR="$WORK/stage" prefix=/usr
