@@ -38,8 +38,9 @@ SYSROOT="$TOOLCHAIN/sysroot"
 CC="$TOOLCHAIN/bin/${TRIPLE}${API}-clang"
 CXX="$TOOLCHAIN/bin/${TRIPLE}${API}-clang++"
 LIB_DIR="$SYSROOT/usr/lib/$TRIPLE/$API"
+VULKAN_INCLUDE_DIR="$SYSROOT/usr/include"
 
-for tool in "$CC" "$CXX" "$TOOLCHAIN/bin/llvm-ar" "$LIB_DIR/libvulkan.so"; do
+for tool in "$CC" "$CXX" "$TOOLCHAIN/bin/llvm-ar" "$LIB_DIR/libvulkan.so" "$VULKAN_INCLUDE_DIR/vulkan/vulkan.h"; do
   [[ -e "$tool" ]] || { echo "Ferramenta/arquivo ausente: $tool" >&2; exit 1; }
 done
 command -v glslangValidator >/dev/null
@@ -56,14 +57,12 @@ if [[ ! -f "$SOURCE/configure" ]]; then
   git clone --depth 1 --branch "$VERSION" https://github.com/FFmpeg/FFmpeg.git "$SOURCE"
 fi
 
-# FFmpeg discovers Vulkan with pkg-config. Keep paths rooted at / here and let
-# PKG_CONFIG_SYSROOT_DIR map them into the Android NDK sysroot. Embedding the
-# host's absolute sysroot paths in this file causes pkg-config to prefix the
-# sysroot a second time, so configure incorrectly reports Vulkan as missing.
+# Use absolute paths for pkg-config. FFmpeg configure checks both Vulkan headers
+# and linker availability; relying on SYSROOT_DIR here duplicates the NDK prefix.
 cat > "$WORK/pkgconfig/vulkan.pc" <<EOF
-prefix=/usr
-libdir=\${prefix}/lib/$TRIPLE/$API
-includedir=\${prefix}/include
+prefix=$SYSROOT/usr
+libdir=$LIB_DIR
+includedir=$VULKAN_INCLUDE_DIR
 
 Name: vulkan
 Description: Android NDK Vulkan loader
@@ -74,7 +73,7 @@ EOF
 
 export PKG_CONFIG_PATH="$WORK/pkgconfig"
 export PKG_CONFIG_LIBDIR="$WORK/pkgconfig"
-export PKG_CONFIG_SYSROOT_DIR="$SYSROOT"
+unset PKG_CONFIG_SYSROOT_DIR
 
 cd "$SOURCE"
 ./configure \
@@ -114,7 +113,7 @@ cd "$SOURCE"
   --enable-encoder=png \
   --enable-muxer=image2 \
   --enable-filter=buffer,buffersink,format,hwupload,hwdownload,scale_vulkan,scale,crop,fps,transpose \
-  --extra-cflags="-fPIC" \
+  --extra-cflags="-fPIC -I$VULKAN_INCLUDE_DIR" \
   --extra-ldflags="-L$LIB_DIR" \
   --pkg-config=pkg-config
 
